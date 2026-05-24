@@ -1,11 +1,8 @@
 # COURSEWORK PROJECT
-# The role of ownership structure and state support in the resilience of Russian airports
+# The role of ownership structure and state support in the resilience of Russian airports during a passenger traffic collapse
 
-#############################
-# 0. INSTALL PACKAGES
-#############################
 
-# Run once if packages are not installed
+# 0. INSTALLING PACKAGES
 
 install.packages(c(
   "tidyverse",
@@ -23,9 +20,8 @@ install.packages(c(
   "naniar"
 ))
 
-#############################
-# 1. LOAD LIBRARIES
-#############################
+
+# 1. LOADING LIBRARIES
 
 library(tidyverse)
 library(readr)
@@ -41,40 +37,19 @@ library(ggplot2)
 library(psych)
 library(naniar)
 
-#############################
-# 2. LOAD DATA
-#############################
+# 2. LOADING DATA
 
-# IMPORTANT:
-# Put your CSV file into your working directory
-# and write the correct filename below
+df <- read_csv("/Users/elinakaumova/Downloads/airports.csv")
 
-df <- read_csv("/Users/elinakaumova/Downloads/DATA.csv")
-
-# If your file is Excel:
-# df <- read_excel("airports.xlsx")
-
-#############################
-# 3. CLEAN COLUMN NAMES
-#############################
+# 3. CLEANING COLUMN NAMES
 
 df <- clean_names(df)
 
-#############################
-# 4. CHECK COLUMN NAMES
-#############################
+# 4. CHECKING COLUMN NAMES
 
 names(df)
 
-############################################################
-# IMPORTANT
-# AFTER RUNNING names(df),
-# replace column names below if necessary
-############################################################
-
-#############################
-# 5. RENAME VARIABLES
-#############################
+# 5. RENAMING VARIABLES
 
 df <- df %>%
   rename(
@@ -109,9 +84,7 @@ df <- df %>%
     subsidies_2024 = subsidii_2024
   )
 
-#############################
-# 6. CONVERT TO NUMERIC
-#############################
+# 6. CONVERTING TO NUMERIC
 
 numeric_cols <- c(
   "passengers_2019",
@@ -145,9 +118,8 @@ df[numeric_cols] <- lapply(df[numeric_cols], function(x) {
   as.numeric(gsub(",", ".", gsub(" ", "", as.character(x))))
 })
 
-#############################
-# 7. CREATE OWNERSHIP DUMMY
-#############################
+
+# 7. CREATING OWNERSHIP DUMMY
 
 # 1 = state-owned
 # 0 = private
@@ -161,17 +133,13 @@ df <- df %>%
     )
   )
 
-#############################
 # 8. MISSING VALUES CHECK
-#############################
 
 miss_var_summary(df)
 
 vis_miss(df)
 
-#############################
-# 9. CONVERT WIDE -> LONG
-#############################
+# 9. CONVERTING DATA TO THE LONG FORMAT
 
 passengers_long <- df %>%
   pivot_longer(
@@ -205,9 +173,7 @@ subsidies_long <- df %>%
   ) %>%
   mutate(year = str_extract(year, "\\d+"))
 
-#############################
-# 10. MERGE PANEL DATASET
-#############################
+# 10. MERGING PANEL DATASET
 
 panel_df <- passengers_long %>%
   left_join(
@@ -237,9 +203,7 @@ panel_df <- passengers_long %>%
     subsidies
   )
 
-#############################
-# 11. CREATE RECOVERY RATIO
-#############################
+# 11. CREATING RECOVERY RATIO
 
 baseline <- df %>%
   select(airport, passengers_2019)
@@ -250,9 +214,7 @@ panel_df <- panel_df %>%
     recovery_ratio = passengers / passengers_2019
   )
 
-#############################
-# 12. CREATE PROFITABILITY
-#############################
+# 12. CREATING PROFITABILITY
 
 panel_df <- panel_df %>%
   mutate(
@@ -260,9 +222,7 @@ panel_df <- panel_df %>%
     op_profit_per_passenger = op_profit / passengers
   )
 
-#############################
-# 13. CREATE LOG SUBSIDIES
-#############################
+# 13. CREATING LOG SUBSIDIES
 
 panel_df <- panel_df %>%
   mutate(
@@ -270,15 +230,11 @@ panel_df <- panel_df %>%
     log_subsidies = log(subsidies + 1)
   )
 
-#############################
 # 14. DESCRIPTIVE STATISTICS
-#############################
 
 describe(panel_df)
 
-#############################
 # 15. GRAPH: RECOVERY DYNAMICS
-#############################
 
 recovery_plot <- panel_df %>%
   filter(year %in% c("2020", "2021", "2022", "2023", "2024")) %>%
@@ -306,7 +262,7 @@ ggplot(recovery_plot,
   ) +
   theme_minimal() +
   
-  # УВЕЛИЧЕНИЕ ШРИФТОВ
+  # CHANGING TEXT SIZE
   theme(
     plot.title = element_text(size = 20, face = "bold"),
     axis.title = element_text(size = 16),
@@ -316,10 +272,7 @@ ggplot(recovery_plot,
   )
 
 
-
-#############################
 # BOXPLOT: PROFITABILITY
-#############################
 
 profit_boxplot <- panel_df %>%
   filter(year %in% c("2022", "2023", "2024")) %>%
@@ -348,7 +301,7 @@ profit_boxplot <- panel_df %>%
   
   theme_minimal() +
   
-  # УВЕЛИЧЕНИЕ ШРИФТОВ
+  # CHANGING TEXT SIZE
   theme(
     plot.title = element_text(size = 20, face = "bold"),
     plot.subtitle = element_text(size = 15),
@@ -360,27 +313,18 @@ profit_boxplot <- panel_df %>%
 
 print(profit_boxplot)
 
-############################################################
 # HYPOTHESIS 1
-############################################################
-
-############################################################
-# H1:
 # State airports are more likely to receive subsidies
-############################################################
 
-#############################
 # 16. CREATE SUBSIDY DUMMY
-#############################
 
 panel_df <- panel_df %>%
   mutate(
     subsidy_dummy = ifelse(subsidies > 0, 1, 0)
   )
 
-#############################
 # 17. LOGISTIC REGRESSION
-#############################
+
 
 h1_model <- glm(
   subsidy_dummy ~
@@ -393,39 +337,16 @@ h1_model <- glm(
 
 summary(h1_model)
 
-#############################
-# 18. INTERPRETATION
-#############################
 
-# IMPORTANT:
-# Look at p-value for state_owned
-
-# if p < 0.05:
-# H1 supported
-
-# if p > 0.05:
-# H1 rejected
-
-############################################################
 # HYPOTHESIS 2
-############################################################
-
-############################################################
-# H2:
 # Recovery differs across ownership forms
-# and depends on subsidies
-############################################################
 
-#############################
-# 19. KEEP POST-CRISIS YEARS
-#############################
+# 18. KEEP POST-CRISIS YEARS
 
 recovery_df <- panel_df %>%
   filter(year %in% c("2021", "2022", "2023", "2024"))
 
-#############################
-# 20. PANEL REGRESSION
-#############################
+# 19. PANEL REGRESSION
 
 h2_model <- feols(
   recovery_ratio ~
@@ -439,48 +360,24 @@ h2_model <- feols(
 
 summary(h2_model)
 
-#############################
-# 21. INTERPRETATION
-#############################
 
-# IMPORTANT:
-# Look at:
-#
-# state_owned
-# log_subsidies
-# interaction term
-#
-# p < 0.05 means significant effect
 
-############################################################
 # HYPOTHESIS 3
-############################################################
+# Private airports demonstrate higher profitability per passenger
 
-############################################################
-# H3:
-# Private airports demonstrate
-# higher profitability per passenger
-############################################################
-
-#############################
-# 22. KEEP POST-CRISIS YEARS
-#############################
+# 20. KEEP POST-CRISIS YEARS
 
 profit_df <- panel_df %>%
   filter(year %in% c("2022", "2023", "2024"))
 
-#############################
-# 23. MANN-WHITNEY TEST
-#############################
+# 21. MANN-WHITNEY TEST
 
 wilcox.test(
   op_profit_per_passenger ~ state_owned,
   data = profit_df
 )
 
-#############################
-# 24. REGRESSION ROBUSTNESS CHECK
-#############################
+# 22. REGRESSION ROBUSTNESS CHECK
 
 h3_model <- feols(
   op_profit_per_passenger ~
@@ -492,30 +389,8 @@ h3_model <- feols(
 
 summary(h3_model)
 
-#############################
-# 25. INTERPRETATION
-#############################
-
-# IMPORTANT:
-#
-# If coefficient for state_owned < 0
-# and statistically significant:
-#
-# then private airports are MORE profitable
-#
-# H3 supported
-
-############################################################
-# 26. REGRESSION TABLES
-#############################################################
-
-modelsummary(
-  list(
-    "H1 Logistic" = h1_model,
-    "H2 Recovery" = h2_model,
-    "H3 Profitability" = h3_model
-  )
-)
+# HYPOTHESIS 4
+# Airports with higher pre-crisis passenger traffic experienced stronger post-crisis recovery dynamics regardless of ownership structure
 
 h4_model <- feols(
   recovery_ratio ~
@@ -528,48 +403,6 @@ h4_model <- feols(
 
 summary(h4_model)
 
-############################################################
-# 27. SAVE RESULTS
-#############################################################
+# 23. SAVE RESULTS
 
 write_csv(panel_df, "panel_dataset.csv")
-
-############################################################
-# 28. FINAL INTERPRETATION GUIDE
-############################################################
-
-# H1
-# -------------------
-# Check coefficient for state_owned
-#
-# Positive + significant:
-# state airports more likely
-# to receive subsidies
-#
-# => hypothesis supported
-
-# H2
-# -------------------
-# Check interaction term:
-#
-# state_owned:log_subsidies
-#
-# Significant:
-# subsidies affect recovery differently
-# depending on ownership structure
-#
-# => hypothesis supported
-
-# H3
-# -------------------
-# Check state_owned coefficient
-#
-# Negative and significant:
-# state airports less profitable
-# per passenger
-#
-# => private airports more efficient
-
-############################################################
-# END OF PROJECT
-############################################################
